@@ -2,7 +2,10 @@ use super::instance::{
     InitializeCache, InstanceKey, InstanceRegistry, RaInstance, INIT_REQUEST_ID,
 };
 use anyhow::{bail, Context, Result};
-use ra_multiplex::{lsp::{Message, self}, proto};
+use ra_multiplex::{
+    lsp::{self, Message},
+    proto,
+};
 use serde_json::{json, Map, Value};
 use std::io::ErrorKind;
 use std::sync::Arc;
@@ -76,6 +79,20 @@ impl Client {
             // instead of tagging the original id we replace it with a custom id that only
             // the `initialize` uses
             json.insert("id".to_owned(), Value::String(INIT_REQUEST_ID.to_owned()));
+
+            json.get_mut("params")
+                .and_then(|p| p.as_object_mut())
+                .and_then(|p| {
+                    p.insert(
+                        "initializationOptions".to_string(),
+                        json!({
+                            "cargo": {
+                                "features":"all"
+                            },
+                            "procMacro":{"enable":true}
+                        }),
+                    )
+                });
 
             self.instance
                 .message_writer
